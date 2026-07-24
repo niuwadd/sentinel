@@ -1,0 +1,7 @@
+packages:
+  - "client"
+  - "server"
+  - "apps/*"
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false
