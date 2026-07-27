@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react"
 import { gsap } from "gsap"
-import { FrostedGlass } from "@/components/Common/FrostedGlass"
 import { rooms } from "@/types/room"
+import { useSensorStore } from "@/store/sensorStore"
 
 interface RoomStripProps {
   activeRoom: string
@@ -13,6 +13,8 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
   const cardsRef = useRef<Map<string, HTMLButtonElement>>(new Map())
   const indicatorRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
+
+  const roomsMap = useSensorStore((s) => s.rooms)
 
   const moveIndicator = (id: string, instant = false) => {
     const card = cardsRef.current.get(id)
@@ -32,13 +34,11 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
     })
   }
 
-  // move indicator on mount and when activeRoom changes
   useEffect(() => {
     if (!ready) return
     moveIndicator(activeRoom)
   }, [activeRoom, ready])
 
-  // measure and set initial position after layout
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       moveIndicator(activeRoom, true)
@@ -47,7 +47,6 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  // re-measure on resize
   useEffect(() => {
     if (!ready) return
     const onResize = () => moveIndicator(activeRoom, true)
@@ -62,7 +61,6 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
 
   return (
     <div ref={stripRef} className="relative flex items-center gap-6 overflow-x-auto pb-6 pt-4 mask-fade-edges scrollbar-none">
-      {/* floating active indicator */}
       <div
         ref={indicatorRef}
         className="absolute top-4 h-[calc(100%-2rem)] bg-primary rounded-[2rem] z-0 pointer-events-none"
@@ -70,6 +68,9 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
 
       {rooms.map((room) => {
         const isActive = activeRoom === room.id
+        const sensor = roomsMap.get(room.id)
+        const temp = sensor?.temp ?? room.temp
+
         return (
           <button
             key={room.id}
@@ -94,7 +95,7 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
             <span className={`inline-block mt-4 px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${
               isActive ? "bg-white/20 text-white" : "bg-primary-container/20 text-primary"
             }`}>
-              {room.temp}°C
+              {temp}°C
             </span>
             <p className={`text-xl font-semibold mt-3 text-left transition-colors ${
               isActive ? "text-white" : "text-on-surface"

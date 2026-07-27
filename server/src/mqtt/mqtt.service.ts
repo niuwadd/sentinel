@@ -1,7 +1,6 @@
 import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import type { SensorDataPayload, AiDecisionPayload } from '@climelens/shared';
-
 @Injectable()
 export class MqttService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MqttService.name);

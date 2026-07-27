@@ -107,7 +107,6 @@ server/src/
 ### 代码风格
 - 单引号、尾逗号（参考 `.prettierrc`）
 - NestJS 装饰器风格，不用 class-validator 以外的校验方式
-- 由于 tsconfig `module: "nodenext"`，相对路径 import 必须带 `.js` 后缀，如 `import { AppModule } from './app.module.js'`
 
 ---
 

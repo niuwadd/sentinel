@@ -1,11 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { MqttController } from './mqtt.controller';
+import { MqttService } from './mqtt.service';
+import { RoomModule } from '../room/room.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MqttController } from './mqtt.controller.js';
-import { MqttService } from './mqtt.service.js';
 
 @Module({
   imports: [
+    forwardRef(() => RoomModule),
     ClientsModule.registerAsync([
       {
         name: 'MQTT_PUB_CLIENT',

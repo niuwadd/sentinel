@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "motion/react"
 import { FrostedGlass } from "@/components/Common/FrostedGlass"
+import { useSensorStore } from "@/store/sensorStore"
+import { useSensorData } from "@/hooks/useSensorData"
 import { rooms } from "@/types/room"
 
 interface GlobalStatsProps {
@@ -12,17 +14,18 @@ export function GlobalStats({ activeRoom }: GlobalStatsProps) {
   const label = isWhole ? "全屋状态" : room?.name ?? "全屋状态"
   const subLabel = isWhole ? "Smart Dashboard" : "房间详情"
 
-  const avgTemp = isWhole
-    ? Math.round(rooms.reduce((s, r) => s + r.temp, 0) / rooms.length)
-    : room?.temp ?? 0
-  const avgHumi = isWhole
-    ? Math.round(rooms.reduce((s, r) => s + r.humi, 0) / rooms.length)
-    : room?.humi ?? 0
+  const globalStats = useSensorStore((s) => s.globalStats)
+  const roomSensor = useSensorData(activeRoom ?? "")
+
+  const avgTemp = isWhole ? globalStats.avgTemp : (roomSensor?.temp ?? 0)
+  const avgHumi = isWhole ? globalStats.avgHumi : (roomSensor?.humi ?? 0)
   const totalDevices = isWhole
     ? rooms.reduce((s, r) => s + r.devices, 0)
-    : room?.devices ?? 0
+    : (room?.devices ?? 0)
+  const onlineCount = isWhole ? globalStats.onlineCount : (roomSensor?.status === "online" ? 1 : 0)
   const airQuality = isWhole ? "12" : String(room?.airQuality ?? 0)
   const airLabel = isWhole ? "优" : room && room.airQuality <= 10 ? "优" : "良"
+  const outdoorTemp = room?.outdoorTemp ?? 15
 
   return (
     <FrostedGlass className="rounded-[2rem] p-5 w-72 space-y-5">
@@ -73,20 +76,20 @@ export function GlobalStats({ activeRoom }: GlobalStatsProps) {
             </div>
             <div className="p-3 rounded-2xl bg-white/30">
               <p className="text-[10px] text-on-surface-variant/60 mb-1">室外温度</p>
-              <span className="text-xl font-bold text-secondary">{room?.outdoorTemp ?? 15}°</span>
+              <span className="text-xl font-bold text-secondary">{outdoorTemp}°</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between px-3">
             <span className="text-on-surface-variant/80 text-sm">在线设备</span>
             <motion.span
-              key={`devices-${totalDevices}`}
+              key={`devices-${onlineCount}`}
               initial={{ opacity: 0, scale: 1.2 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
               className="text-xl font-semibold text-on-surface"
             >
-              {totalDevices}
+              {isWhole ? onlineCount : totalDevices}
             </motion.span>
           </div>
           <div className="flex items-center justify-between px-3">

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { brokerConfig } from './broker.config.js';
-import { databaseConfig } from './database.config.js';
-import { aiConfig } from './ai.config.js';
-import { validate } from './env.validation.js';
+import { brokerConfig } from './broker.config';
+import { databaseConfig } from './database.config';
+import { aiConfig } from './ai.config';
+import { validate } from './env.validation';
 
 @Module({
   imports: [

@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AppConfigModule } from './config/config.module.js';
-import { MqttModule } from './mqtt/mqtt.module.js';
+import { AppConfigModule } from './config/config.module';
+import { MqttModule } from './mqtt/mqtt.module';
+import { RoomModule } from './room/room.module';
 
 @Module({
-  imports: [AppConfigModule, MqttModule],
+  imports: [AppConfigModule, MqttModule, RoomModule],
   controllers: [],
   providers: [],
 })
