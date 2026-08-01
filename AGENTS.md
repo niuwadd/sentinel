@@ -75,6 +75,7 @@ client/src/
 - 函数组件 + TypeScript，不用 class component
 - Props 类型用 interface，定义在组件文件内或同目录
 - 组件文件命名为 PascalCase，如 `RoomStrip.tsx`
+- **UI 组件优先从 shadcn/ui 下载**：设计交互组件（Button、Dialog、Slider、Switch 等）时，先用 `npx shadcn@latest add <component>` 添加，shadcn 没有对应组件时再自行编写
 
 ---
 

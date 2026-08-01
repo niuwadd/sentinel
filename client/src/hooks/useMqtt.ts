@@ -1,16 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { mqttService, type ConnStatus } from '@/services/mqtt.service'
 import { useSensorStore } from '@/store/sensorStore'
 import { useAiStore } from '@/store/aiStore'
 
 type BrokerTarget = 'local' | 'cloud'
 
-const FALLBACK_TIMEOUT = 5000
-
 /**
- * MQTT 连接管理 Hook — 本地 Broker 优先，连不上自动切到云端
+ * MQTT 连接管理 Hook — 同步 MQTT 服务的连接状态和业务消息
  *
- * 组件挂载时自动连本地 Broker；5 秒连不上自动改连云端。
+ * 组件挂载时自动连接本地 Broker。MqttService 负责本地断线后的云端降级与云端重连，
+ * Hook 仅负责将状态和业务消息同步到 Zustand Store。
  * 收到传感器数据时写入 sensorStore，收到 AI 决策时写入 aiStore。
  * 连接状态变化后更新 sensorStore 的 brokerHealth 和 activeBroker。
  *
@@ -22,9 +21,8 @@ export function useMqtt() {
   const [connectedBroker, setConnectedBroker] = useState<BrokerTarget | null>(null)
   const [status, setStatus] = useState<ConnStatus>('disconnected')
 
-  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const updateRoom = useSensorStore((s) => s.updateRoom)
+  const updateRoomStatus = useSensorStore((s) => s.updateRoomStatus)
   const setBrokerHealth = useSensorStore((s) => s.setBrokerHealth)
   const setActiveBroker = useSensorStore((s) => s.setActiveBroker)
   const addDecision = useAiStore((s) => s.addDecision)
@@ -34,12 +32,7 @@ export function useMqtt() {
    *
    * @param target - 目标 Broker
    */
-  const connect = (target: BrokerTarget) => {
-    if (fallbackTimer.current) {
-      clearTimeout(fallbackTimer.current)
-      fallbackTimer.current = null
-    }
-
+  const connect = useCallback((target: BrokerTarget) => {
     mqttService.connect(target, (newStatus, broker) => {
       setStatus(newStatus)
 
@@ -47,42 +40,32 @@ export function useMqtt() {
         setConnectedBroker(broker)
         setBrokerHealth(broker, true)
         setActiveBroker(broker)
-        if (fallbackTimer.current) {
-          clearTimeout(fallbackTimer.current)
-          fallbackTimer.current = null
-        }
         return
       }
 
       if (newStatus === 'disconnected') {
         setBrokerHealth(broker, false)
+        setConnectedBroker((currentBroker) =>
+          currentBroker === broker ? null : currentBroker,
+        )
+        setActiveBroker('none')
       }
     })
-
-    if (target === 'local') {
-      fallbackTimer.current = setTimeout(() => {
-        if (!connectedBroker) {
-          console.warn('[useMqtt] local broker unreachable, falling back to cloud')
-          connect('cloud')
-        }
-      }, FALLBACK_TIMEOUT)
-    }
-  }
+  }, [setActiveBroker, setBrokerHealth])
 
   useEffect(() => {
     mqttService.subscribe({
       onSensorData: (data) => updateRoom(data.deviceId, data),
+      onDeviceStatus: (data) => updateRoomStatus(data.deviceId, data),
       onAiDecision: (decision) => addDecision(decision),
     })
 
     connect('local')
 
     return () => {
-      if (fallbackTimer.current) clearTimeout(fallbackTimer.current)
       mqttService.disconnect()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [addDecision, connect, updateRoom, updateRoomStatus])
 
   return { connectedBroker, status, connect }
 }

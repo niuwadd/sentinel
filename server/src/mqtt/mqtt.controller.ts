@@ -1,14 +1,18 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import type { SensorDataPayload } from '@climelens/shared';
+import type { DeviceStatusPayload, SensorDataPayload } from '@climelens/shared';
 import { MQTT_PATTERNS } from '@climelens/shared';
 import { RoomService } from '../room/room.service';
+import { SensorGateway } from '../gateway/sensor.gateway';
 
 @Controller()
 export class MqttController {
   private readonly logger = new Logger(MqttController.name);
 
-  constructor(private readonly roomService: RoomService) {}
+  constructor(
+    private readonly roomService: RoomService,
+    private readonly sensorGateway: SensorGateway,
+  ) {}
 
   /**
    * 消费所有房间的传感器数据消息
@@ -30,6 +34,7 @@ export class MqttController {
       status: data.status,
       timestamp: data.timestamp,
     });
+    this.sensorGateway.handleSensorUpdate(data);
   }
 
   /**
@@ -40,7 +45,7 @@ export class MqttController {
    * @param data - 设备状态载荷（deviceId、status）
    */
   @EventPattern(MQTT_PATTERNS.DEVICE_STATUS)
-  handleDeviceStatus(@Payload() data: { deviceId: string; status: string }) {
+  handleDeviceStatus(@Payload() data: DeviceStatusPayload) {
     this.logger.log(`Device ${data.deviceId} status: ${data.status}`);
 
     if (data.status === 'online' || data.status === 'offline' || data.status === 'fault') {
@@ -50,6 +55,7 @@ export class MqttController {
         status: data.status,
         timestamp: new Date().toISOString(),
       });
+      this.sensorGateway.handleDeviceStatus(data);
     }
   }
 }

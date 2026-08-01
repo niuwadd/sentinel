@@ -17,10 +17,19 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
   const roomsMap = useSensorStore((s) => s.rooms)
 
   const moveIndicator = (id: string, instant = false) => {
-    const card = cardsRef.current.get(id)
+    const card = id ? cardsRef.current.get(id) : undefined
     const strip = stripRef.current
     const indicator = indicatorRef.current
-    if (!card || !strip || !indicator) return
+    if (!card || !strip || !indicator) {
+      if (indicator) {
+        gsap.to(indicator, {
+          opacity: 0,
+          duration: instant ? 0 : 0.35,
+          ease: "power3.out",
+        })
+      }
+      return
+    }
 
     const stripRect = strip.getBoundingClientRect()
     const cardRect = card.getBoundingClientRect()
@@ -29,6 +38,7 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
     gsap.to(indicator, {
       x: offsetLeft,
       width: cardRect.width,
+      opacity: 1,
       duration: instant ? 0 : 0.45,
       ease: "power3.out",
     })
@@ -70,6 +80,7 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
         const isActive = activeRoom === room.id
         const sensor = roomsMap.get(room.id)
         const temp = sensor?.temp ?? room.temp
+        const deviceIcons = room.hasAc ? ['lightbulb', 'air'] : ['lightbulb', 'tv']
 
         return (
           <button
@@ -106,7 +117,7 @@ export function RoomStrip({ activeRoom, onRoomSelect }: RoomStripProps) {
               isActive ? "" : "opacity-60"
             }`}>
               <div className="flex gap-2">
-                {["lightbulb", "air", "tv"].slice(0, isActive ? 3 : 2).map((icon) => (
+                {deviceIcons.map((icon) => (
                   <span key={icon} className={`material-symbols-outlined text-[16px] transition-colors ${
                     isActive ? "text-white" : "text-tertiary"
                   }`}>{icon}</span>

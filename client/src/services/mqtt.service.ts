@@ -1,6 +1,10 @@
 import mqtt, { type MqttClient, type IClientOptions } from 'mqtt'
 import { MQTT_PATTERNS, MQTT_TOPICS } from '@climelens/shared'
-import type { SensorDataPayload, AiDecisionPayload } from '@climelens/shared'
+import type {
+  AiDecisionPayload,
+  DeviceStatusPayload,
+  SensorDataPayload,
+} from '@climelens/shared'
 
 export type BrokerTarget = 'local' | 'cloud'
 export type ConnStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
@@ -21,8 +25,12 @@ const BROKERS: Record<BrokerTarget, MqttBrokerConfig> = {
   },
 }
 
+const LOCAL_FALLBACK_TIMEOUT = 5000
+const CLOUD_RECONNECT_TIMEOUT = 3000
+
 export type MqttMessageHandler = {
   onSensorData: (data: SensorDataPayload) => void
+  onDeviceStatus: (data: DeviceStatusPayload) => void
   onAiDecision: (data: AiDecisionPayload) => void
 }
 
@@ -31,6 +39,11 @@ export class MqttService {
   private handler: MqttMessageHandler | null = null
   private target: BrokerTarget | null = null
   private status: ConnStatus = 'idle'
+  private statusChangeHandler:
+    | ((status: ConnStatus, broker: BrokerTarget) => void)
+    | undefined
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private shouldMaintainConnection = false
 
   /**
    * 连接到指定的 MQTT Broker（本地或云端），失败时回调 onStatusChange
@@ -38,26 +51,55 @@ export class MqttService {
    * @param target - 连接目标：local 优先，cloud 兜底
    * @param onStatusChange - 连接状态变化回调，用于通知 UI
    */
-  connect(target: BrokerTarget, onStatusChange?: (status: ConnStatus, broker: BrokerTarget) => void) {
-    if (this.client) this.disconnect()
+  connect(
+    target: BrokerTarget,
+    onStatusChange?: (status: ConnStatus, broker: BrokerTarget) => void,
+  ) {
+    this.clearReconnectTimer()
+    this.shouldMaintainConnection = true
+    this.statusChangeHandler = onStatusChange
 
+    if (this.client) {
+      const currentClient = this.client
+      this.client = null
+      currentClient.end(true)
+    }
+
+    this.connectTarget(target)
+  }
+
+  /**
+   * 建立与目标 Broker 的单次连接，并注册连接生命周期处理器。
+   *
+   * @param target - 本次连接的目标 Broker。
+   * @returns 无返回值。
+   */
+  private connectTarget(target: BrokerTarget) {
     this.target = target
     this.status = 'connecting'
-    onStatusChange?.('connecting', target)
+    this.statusChangeHandler?.('connecting', target)
 
     const config = BROKERS[target]
     const options: IClientOptions = {
       clientId: `web_${Math.random().toString(36).slice(2, 10)}`,
       keepalive: 60,
       connectTimeout: 5000,
-      reconnectPeriod: 3000,
+      reconnectPeriod: 0,
     }
 
     const client = mqtt.connect(config.url, options)
+    this.client = client
+
+    if (target === 'local') {
+      this.scheduleLocalFallback(client)
+    }
 
     client.on('connect', () => {
+      if (this.client !== client) return
+
       this.status = 'connected'
-      onStatusChange?.('connected', target)
+      this.clearReconnectTimer()
+      this.statusChangeHandler?.('connected', target)
 
       client.subscribe(MQTT_PATTERNS.SENSOR_DATA, { qos: 1 }, (err) => {
         if (err) console.error('[MQTT] subscribe sensor data failed:', err)
@@ -71,13 +113,25 @@ export class MqttService {
     })
 
     client.on('reconnect', () => {
+      if (this.client !== client) return
+
       this.status = 'reconnecting'
-      onStatusChange?.('reconnecting', target)
+      this.statusChangeHandler?.('reconnecting', target)
     })
 
     client.on('close', () => {
+      if (this.client !== client || !this.shouldMaintainConnection) return
+
+      this.client = null
       this.status = 'disconnected'
-      onStatusChange?.('disconnected', target)
+      this.statusChangeHandler?.('disconnected', target)
+
+      if (target === 'local') {
+        this.scheduleLocalFallback()
+        return
+      }
+
+      this.scheduleCloudReconnect()
     })
 
     client.on('error', (err) => {
@@ -87,19 +141,72 @@ export class MqttService {
     client.on('message', (topic, payload) => {
       this.handleMessage(topic, payload)
     })
-
-    this.client = client
   }
 
   /**
    * 断开当前 MQTT 连接，释放资源
    */
   disconnect() {
-    if (!this.client) return
-    this.client.end(true)
-    this.client = null
+    this.shouldMaintainConnection = false
+    this.clearReconnectTimer()
+    if (this.client) {
+      const currentClient = this.client
+      this.client = null
+      currentClient.end(true)
+    }
     this.status = 'disconnected'
     this.target = null
+  }
+
+  /**
+   * 在本地 Broker 未能建立或维持连接时，延迟切换到云端 Broker。
+   *
+   * @param expectedClient - 首次连接时预期仍处于连接中的本地客户端。
+   * @returns 无返回值。
+   */
+  private scheduleLocalFallback(expectedClient?: MqttClient) {
+    this.clearReconnectTimer()
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+
+      if (!this.shouldMaintainConnection || this.target !== 'local') return
+      if (expectedClient && this.client !== expectedClient) return
+      if (this.status === 'connected') return
+
+      if (this.client) {
+        const currentClient = this.client
+        this.client = null
+        currentClient.end(true)
+      }
+
+      this.connectTarget('cloud')
+    }, LOCAL_FALLBACK_TIMEOUT)
+  }
+
+  /**
+   * 云端 Broker 断开后，延迟重新建立云端连接。
+   *
+   * @returns 无返回值。
+   */
+  private scheduleCloudReconnect() {
+    this.clearReconnectTimer()
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+
+      if (!this.shouldMaintainConnection || this.target !== 'cloud') return
+      this.connectTarget('cloud')
+    }, CLOUD_RECONNECT_TIMEOUT)
+  }
+
+  /**
+   * 清除尚未执行的切换或重连定时器。
+   *
+   * @returns 无返回值。
+   */
+  private clearReconnectTimer() {
+    if (!this.reconnectTimer) return
+    clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = null
   }
 
   /**
@@ -147,6 +254,11 @@ export class MqttService {
 
       if (topic.endsWith('/data')) {
         this.handler?.onSensorData(data as SensorDataPayload)
+        return
+      }
+
+      if (topic.endsWith('/status')) {
+        this.handler?.onDeviceStatus(data as DeviceStatusPayload)
         return
       }
 

@@ -2,6 +2,7 @@ export interface RoomResponse {
   id: string;
   name: string;
   icon: string;
+  hasAc: boolean;
   currentTemp: number | null;
   currentHumi: number | null;
   status: 'online' | 'offline' | 'fault';

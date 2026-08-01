@@ -1,28 +1,29 @@
 import type { AcCommand } from '@climelens/shared'
 
-interface RoomResponse {
+export interface RoomResponse {
   id: string
   name: string
   icon: string
+  hasAc: boolean
   currentTemp: number | null
   currentHumi: number | null
   status: 'online' | 'offline' | 'fault'
   lastUpdate: string | null
 }
 
-interface RoomDetailResponse extends RoomResponse {
+export interface RoomDetailResponse extends RoomResponse {
   devices: number
   airQuality: number | null
   outdoorTemp: number | null
 }
 
-interface RoomHistoryPoint {
+export interface RoomHistoryPoint {
   timestamp: string
   temp: number
   humi: number
 }
 
-interface AiDecisionLogItem {
+export interface AiDecisionLogItem {
   deviceId: string
   reason: string
   timestamp: string

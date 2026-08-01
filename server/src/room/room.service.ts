@@ -6,6 +6,7 @@ interface RoomRecord {
   id: string;
   name: string;
   icon: string;
+  hasAc: boolean;
   devices: number;
   airQuality: number | null;
   outdoorTemp: number | null;
@@ -23,11 +24,10 @@ export class RoomService {
   private readonly logger = new Logger(RoomService.name);
 
   private readonly rooms: RoomRecord[] = [
-    { id: 'bedroom', name: '主卧', icon: 'bedroom_parent', devices: 3, airQuality: 8, outdoorTemp: 15 },
-    { id: 'living', name: '客厅', icon: 'chair', devices: 6, airQuality: 12, outdoorTemp: 15 },
-    { id: 'kitchen', name: '厨房', icon: 'flatware', devices: 2, airQuality: 10, outdoorTemp: 15 },
-    { id: 'bath', name: '浴室', icon: 'bathtub', devices: 4, airQuality: 9, outdoorTemp: 15 },
-    { id: 'nursery', name: '婴儿房', icon: 'child_care', devices: 5, airQuality: 11, outdoorTemp: 15 },
+    { id: 'bedroom-a', name: '卧室 A', icon: 'bed', hasAc: true, devices: 2, airQuality: 9, outdoorTemp: 15 },
+    { id: 'nursery', name: '婴儿房', icon: 'child_care', hasAc: true, devices: 5, airQuality: 11, outdoorTemp: 15 },
+    { id: 'bedroom', name: '主卧', icon: 'bedroom_parent', hasAc: true, devices: 3, airQuality: 8, outdoorTemp: 15 },
+    { id: 'living', name: '客厅', icon: 'chair', hasAc: false, devices: 6, airQuality: 12, outdoorTemp: 15 },
   ];
 
   private sensorCache = new Map<string, SensorCacheEntry>();
@@ -46,6 +46,7 @@ export class RoomService {
         id: room.id,
         name: room.name,
         icon: room.icon,
+        hasAc: room.hasAc,
         currentTemp: sensor?.temp ?? null,
         currentHumi: sensor?.humi ?? null,
         status: sensor?.status ?? 'offline',
@@ -69,6 +70,7 @@ export class RoomService {
       id: room.id,
       name: room.name,
       icon: room.icon,
+      hasAc: room.hasAc,
       currentTemp: sensor?.temp ?? null,
       currentHumi: sensor?.humi ?? null,
       status: sensor?.status ?? 'offline',
@@ -113,6 +115,9 @@ export class RoomService {
     const room = this.rooms.find((r) => r.id === roomId);
     if (!room) {
       throw new Error(`Room ${roomId} not found`);
+    }
+    if (!room.hasAc) {
+      throw new Error(`Room ${roomId} has no air conditioner`);
     }
 
     this.mqttService.publishAcCommand(roomId, {

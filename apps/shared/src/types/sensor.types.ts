@@ -27,3 +27,13 @@ export interface RoomSensorData extends SensorDataPayload {
   /** 前端收到消息的本地时间戳（毫秒） */
   lastUpdate: number
 }
+
+/** ESP32 通过 MQTT 上报的设备连接状态 */
+export interface DeviceStatusPayload {
+  /** 设备唯一标识，如 "room_living" */
+  deviceId: string
+  /** 设备在线状态 */
+  status: 'online' | 'offline' | 'fault'
+  /** 状态发生时间（ISO 8601），缺省时以前端接收时间为准 */
+  timestamp?: string
+}
