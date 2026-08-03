@@ -1,14 +1,18 @@
 import type { MqttService } from '../mqtt/mqtt.service';
+import type { InfluxService } from '../influx/influx.service';
 import { RoomService } from './room.service';
 
 describe('RoomService monitored rooms', () => {
   const publishAcCommand = jest.fn();
+  const queryHistory = jest.fn();
   const mqttService = { publishAcCommand } as unknown as MqttService;
+  const influxService = { queryHistory } as unknown as InfluxService;
   let service: RoomService;
 
   beforeEach(() => {
     publishAcCommand.mockReset();
-    service = new RoomService(mqttService);
+    queryHistory.mockReset();
+    service = new RoomService(mqttService, influxService);
   });
 
   /**
@@ -48,5 +52,23 @@ describe('RoomService monitored rooms', () => {
       'bedroom-a',
       expect.objectContaining({ deviceId: 'bedroom-a' }),
     );
+  });
+
+  /**
+   * 确认历史数据查询委托给 InfluxDB 模块。
+   *
+   * @returns Promise 完成后无返回值。
+   */
+  it('queries history from influxdb', async () => {
+    queryHistory.mockResolvedValue([
+      { timestamp: '2026-08-02T00:00:00.000Z', temp: 24.1, humi: 50 },
+    ]);
+
+    const history = await service.getHistory('living', '24h');
+
+    expect(queryHistory).toHaveBeenCalledWith('living', '24h');
+    expect(history).toEqual([
+      { timestamp: '2026-08-02T00:00:00.000Z', temp: 24.1, humi: 50 },
+    ]);
   });
 });

@@ -48,7 +48,10 @@ export class RoomController {
    * @returns 时序数据点数组，每个点包含 timestamp、temp、humi
    */
   @Get(':id/data')
-  getRoomHistory(@Param('id') id: string, @Query() query: QueryHistoryDto): RoomHistoryPoint[] {
+  async getRoomHistory(
+    @Param('id') id: string,
+    @Query() query: QueryHistoryDto,
+  ): Promise<RoomHistoryPoint[]> {
     return this.roomService.getHistory(id, query.range!, query.interval);
   }
 

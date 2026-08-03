@@ -4,6 +4,7 @@ import type { DeviceStatusPayload, SensorDataPayload } from '@climelens/shared';
 import { MQTT_PATTERNS } from '@climelens/shared';
 import { RoomService } from '../room/room.service';
 import { SensorGateway } from '../gateway/sensor.gateway';
+import { InfluxService } from '../influx/influx.service';
 
 @Controller()
 export class MqttController {
@@ -12,6 +13,7 @@ export class MqttController {
   constructor(
     private readonly roomService: RoomService,
     private readonly sensorGateway: SensorGateway,
+    private readonly influxService: InfluxService,
   ) {}
 
   /**
@@ -35,6 +37,14 @@ export class MqttController {
       timestamp: data.timestamp,
     });
     this.sensorGateway.handleSensorUpdate(data);
+    this.influxService.writeSensorData(data.deviceId, {
+      temp: data.temp,
+      humi: data.humi,
+      heatIndex: data.heatIndex,
+      battery: data.battery,
+      rssi: data.rssi,
+      timestamp: data.timestamp,
+    });
   }
 
   /**

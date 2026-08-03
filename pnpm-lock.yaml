@@ -112,6 +112,9 @@ importers:
       '@climelens/shared':
         specifier: workspace:*
         version: link:../apps/shared
+      '@influxdata/influxdb-client':
+        specifier: ^1.35.0
+        version: 1.35.0
       '@langchain/anthropic':
         specifier: ^1.5.1
         version: 1.5.1(@langchain/core@1.2.3(openai@6.48.0(ws@8.21.1)(zod@4.4.3))(ws@8.21.1))
@@ -803,6 +806,9 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@influxdata/influxdb-client@1.35.0':
+    resolution: {integrity: sha512-woWMi8PDpPQpvTsRaUw4Ig+nOGS/CWwAwS66Fa1Vr/EkW+NEwxI8YfPBsdBMn33jK2Y86/qMiiuX/ROHIkJLTw==}
 
   '@inquirer/ansi@1.0.2':
     resolution: {integrity: sha512-S8qNSZiYzFd0wAcyG5AXCvUHC5Sr7xpZ9wZ2py9XR88jUz8wooStVx5M6dRzczbBWjic9NP7+rY0Xi7qqK/aMQ==}
@@ -5974,6 +5980,8 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@influxdata/influxdb-client@1.35.0': {}
 
   '@inquirer/ansi@1.0.2': {}
 

@@ -1,6 +1,7 @@
 import { MqttController } from './mqtt.controller';
 import type { RoomService } from '../room/room.service';
 import type { SensorGateway } from '../gateway/sensor.gateway';
+import type { InfluxService } from '../influx/influx.service';
 import type { SensorDataPayload } from '@climelens/shared';
 
 describe('MqttController gateway wiring', () => {
@@ -8,15 +9,17 @@ describe('MqttController gateway wiring', () => {
   const findById = jest.fn();
   const handleSensorUpdate = jest.fn();
   const handleDeviceStatus = jest.fn();
+  const writeSensorData = jest.fn();
 
   const roomService = { updateSensorCache, findById } as unknown as RoomService;
   const gateway = { handleSensorUpdate, handleDeviceStatus } as unknown as SensorGateway;
+  const influxService = { writeSensorData } as unknown as InfluxService;
   let controller: MqttController;
 
   beforeEach(() => {
     jest.clearAllMocks();
     findById.mockReturnValue(undefined);
-    controller = new MqttController(roomService, gateway);
+    controller = new MqttController(roomService, gateway, influxService);
   });
 
   /**
@@ -45,6 +48,10 @@ describe('MqttController gateway wiring', () => {
       expect.objectContaining({ temp: 24.2, humi: 51 }),
     );
     expect(handleSensorUpdate).toHaveBeenCalledWith(data);
+    expect(writeSensorData).toHaveBeenCalledWith(
+      'living',
+      expect.objectContaining({ temp: 24.2, humi: 51 }),
+    );
   });
 
   /**

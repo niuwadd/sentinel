@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MqttService } from '../mqtt/mqtt.service';
+import { InfluxService } from '../influx/influx.service';
 import type { RoomResponse, RoomDetailResponse, RoomHistoryPoint } from './dto/room-response.dto';
 
 interface RoomRecord {
@@ -32,7 +33,10 @@ export class RoomService {
 
   private sensorCache = new Map<string, SensorCacheEntry>();
 
-  constructor(private readonly mqttService: MqttService) {}
+  constructor(
+    private readonly mqttService: MqttService,
+    private readonly influxService: InfluxService,
+  ) {}
 
   /**
    * 获取所有房间列表
@@ -84,14 +88,35 @@ export class RoomService {
   /**
    * 获取房间历史传感器数据
    *
-   * InfluxDB 模块实现前返回模拟数据，用于前端调试
+   * 从 InfluxDB 查询真实时序数据；查询失败时回退到模拟数据，保证前端可用。
    *
    * @param roomId - 房间标识
    * @param range - 时间范围（1h / 6h / 24h / 7d / 30d）
    * @param _interval - 聚合粒度（分钟），暂未使用
    * @returns 时序数据点数组
    */
-  getHistory(roomId: string, range: string, _interval?: number): RoomHistoryPoint[] {
+  async getHistory(
+    roomId: string,
+    range: string,
+    _interval?: number,
+  ): Promise<RoomHistoryPoint[]> {
+    try {
+      return await this.influxService.queryHistory(roomId, range);
+    } catch (err) {
+      this.logger.warn(
+        `InfluxDB history query failed for ${roomId}, falling back to mock: ${(err as Error).message}`,
+      );
+      return this.generateMockHistory(range);
+    }
+  }
+
+  /**
+   * 生成模拟历史数据，用于 InfluxDB 不可用时的降级。
+   *
+   * @param range - 时间范围标识。
+   * @returns 模拟的时序数据点数组。
+   */
+  private generateMockHistory(range: string): RoomHistoryPoint[] {
     const count = this.getPointCount(range);
     const baseTemp = 22 + Math.random() * 4;
     const baseHumi = 50 + Math.random() * 10;

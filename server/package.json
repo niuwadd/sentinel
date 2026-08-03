@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@climelens/shared": "workspace:*",
+    "@influxdata/influxdb-client": "^1.35.0",
     "@langchain/anthropic": "^1.5.1",
     "@langchain/core": "^1.2.3",
     "@langchain/openai": "^1.5.5",

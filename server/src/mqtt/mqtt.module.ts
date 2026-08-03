@@ -5,11 +5,13 @@ import { RoomModule } from '../room/room.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GatewayModule } from '../gateway/gateway.module';
+import { InfluxModule } from '../influx/influx.module';
 
 @Module({
   imports: [
     forwardRef(() => RoomModule),
     GatewayModule,
+    InfluxModule,
     ClientsModule.registerAsync([
       {
         name: 'MQTT_PUB_CLIENT',

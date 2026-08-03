@@ -9,7 +9,7 @@ import { validate } from './env.validation';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '../../.env'],
+      envFilePath: ['.env', '../.env'],
       load: [brokerConfig, databaseConfig, aiConfig],
       validate,
     }),
